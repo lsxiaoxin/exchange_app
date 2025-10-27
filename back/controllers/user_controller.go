@@ -36,7 +36,7 @@ func Register(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "注册成功"})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "注册成功"})
 }
 
 func Login(ctx *gin.Context) {
