@@ -43,7 +43,7 @@ async function convert() {
         return;
     }
 
-    const res = await fetch(API + "/exchangeRates");
+    const res = await fetch(`${API}/exchangeRates?from=${from}&to=${to}`);
     const data = await res.json();
 
     // ✅ 使用后端字段命名风格
@@ -56,8 +56,9 @@ async function convert() {
     const result = amount * data.rate;
 
     document.getElementById("result").innerHTML =
-        `使用汇率：${data.from_currency} → ${data.to_currency} = ${data.rate}<br>
-         ${amount} ${from} ≈ ${result.toFixed(2)} ${to}`;
+    `使用汇率：${data.from_currency} → ${data.to_currency} = ${data.rate}<br>
+     ${amount} ${data.from_currency} ≈ ${result.toFixed(2)} ${data.to_currency}`;
+
 }
 
 </script>
