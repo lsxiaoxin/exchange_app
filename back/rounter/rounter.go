@@ -43,5 +43,12 @@ func SetupRouter() *gin.Engine {
 		article.DELETE("/delete/:id", controllers.DeleteArtile)
 	}
 
+	like := r.Group("like")
+	like.Use(middleware.JWTAuth())
+	{
+		like.POST("/toggle/:id", controllers.ToggleLike)
+		like.GET("/get/:id", controllers.GetLikes)
+	}
+
 	return r;
 }
