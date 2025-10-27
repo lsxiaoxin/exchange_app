@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>汇率转换器</title>
+<style>
+    body { font-family: Arial; padding: 20px; }
+    input, button { margin: 8px 0; padding: 8px; width: 260px; }
+    .card {
+        border: 1px solid #ccc;
+        padding: 15px;
+        width: 300px;
+        margin-top: 20px;
+        border-radius: 6px;
+    }
+</style>
+</head>
+<body>
+
+<h2>汇率转换工具</h2>
+
+<div class="card">
+    <input id="fromCurrency" placeholder="来源货币，例如 USD">
+    <input id="toCurrency" placeholder="目标货币，例如 CNY">
+    <input id="amount" placeholder="金额，例如 100" type="number">
+
+    <button onclick="convert()">转换</button>
+
+    <div id="result" style="margin-top:10px; font-weight:bold;"></div>
+</div>
+
+<script>
+const API = "http://localhost:8080/api";
+
+// ✅ 金额转换逻辑
+async function convert() {
+    const from = document.getElementById("fromCurrency").value.trim().toUpperCase();
+    const to = document.getElementById("toCurrency").value.trim().toUpperCase();
+    const amount = parseFloat(document.getElementById("amount").value);
+
+    if (!from || !to || isNaN(amount)) {
+        document.getElementById("result").innerText = "请输入完整信息！";
+        return;
+    }
+
+    const res = await fetch(API + "/exchangeRates");
+    const data = await res.json();
+
+    // ✅ 使用后端字段命名风格
+    if (!data.rate) {
+        document.getElementById("result").innerText = "未找到汇率，请先添加";
+        return;
+    }
+
+    // ✅ 忽略用户输入的货币 → 使用数据库中的货币
+    const result = amount * data.rate;
+
+    document.getElementById("result").innerHTML =
+        `使用汇率：${data.from_currency} → ${data.to_currency} = ${data.rate}<br>
+         ${amount} ${from} ≈ ${result.toFixed(2)} ${to}`;
+}
+
+</script>
+</body>
+</html>
