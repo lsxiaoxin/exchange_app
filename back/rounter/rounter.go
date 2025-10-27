@@ -26,5 +26,11 @@ func SetupRouter() *gin.Engine {
 		api.POST("/exchangeRate", controllers.CreateExchangeRate)
 	}
 
+	user := r.Group("user")
+	{
+		user.POST("/register", controllers.Register)
+		user.POST("/login", controllers.Login)
+	}
+
 	return r;
 }

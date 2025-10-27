@@ -36,19 +36,35 @@ func Register(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{"message": "注册成功"})
+	ctx.JSON(http.StatusOK, gin.H{"message": "注册成功"})
 }
 
 func Login(ctx *gin.Context) {
-	var exchangeRate models.ExchangeRate
-
-	if err := global.Db.Find(&exchangeRate).Error; err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+	var input models.User
+	
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK,exchangeRate)
+	var user models.User
+	
+	if err := global.Db.Where("user_name = ?", input.UserName).First(&user).Error; err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "用户不存在",
+		})
+		return		
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "密码错误",
+		})
+		return		
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "登录成功"})
 }
 
