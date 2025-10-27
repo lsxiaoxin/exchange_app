@@ -40,14 +40,20 @@ func CreateExchangeRate(ctx *gin.Context) {
 }
 
 func GetExchangeRates(ctx *gin.Context) {
-	var exchangeRate models.ExchangeRate
+	from := ctx.Query("from") 
+	to := ctx.Query("to")     
 
-	if err := global.Db.Find(&exchangeRate).Error; err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+	if from == "" || to == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "请提供来源货币和目标货币"})
 		return
 	}
 
-	ctx.JSON(http.StatusOK,exchangeRate)
+	var exchangeRate models.ExchangeRate
+	err := global.Db.Where("from_currency = ? AND to_currency = ?", from, to).First(&exchangeRate).Error
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, exchangeRate)
 }
