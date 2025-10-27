@@ -3,9 +3,11 @@ package controllers
 import (
 	"exchange_app/global"
 	"exchange_app/models"
+	"exchange_app/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -65,6 +67,11 @@ func Login(ctx *gin.Context) {
 		return		
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "登录成功"})
+	token, _ := utils.GenerateToken(user.ID)
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "登录成功",
+		"token": token,
+	})
 }
 

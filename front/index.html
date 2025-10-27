@@ -114,97 +114,136 @@
 </div>
 
 <script>
-const API = "http://localhost:8080/api";
-const USER = "http://localhost:8080/user";
-
-// 显示指定卡片，隐藏其他卡片
-function showCard(cardId) {
-    const cards = ['loginCard','registerCard','exchangeCard'];
-    cards.forEach(id => {
-        document.getElementById(id).style.display = (id === cardId) ? 'block' : 'none';
-    });
-}
-
-// 显示信息
-function showMessage(id,msg,success){
-    const el=document.getElementById(id);
-    el.innerText=msg;
-    el.className='message '+(success?'success':'error');
-}
-
-// 注册
-async function register() {
-    const username = document.getElementById("regUsername").value.trim();
-    const password = document.getElementById("regPassword").value;
-    if (!username || !password) { showMessage("regResult","请输入用户名和密码",false); return; }
-
-    const res = await fetch(`${USER}/register`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({username,password})
-    });
-    const data = await res.json();
-    if(res.status===201){
-        showMessage("regResult","注册成功！请登录",true);
+    const API = "http://localhost:8080/api";
+    const USER = "http://localhost:8080/user";
+    
+    // ✅ 显示指定卡片
+    function showCard(cardId) {
+        const cards = ['loginCard','registerCard','exchangeCard'];
+        cards.forEach(id => {
+            document.getElementById(id).style.display = (id === cardId) ? 'block' : 'none';
+        });
+    }
+    
+    // ✅ 显示信息
+    function showMessage(id,msg,success){
+        const el=document.getElementById(id);
+        el.innerText=msg;
+        el.className='message '+(success?'success':'error');
+    }
+    
+    // ✅ 封装带 Token 的请求
+    async function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        options.headers = {
+            ...options.headers,
+            "Authorization": "Bearer " + token  // ✅ 关键
+        };
+        return fetch(url, options);
+    }
+    
+    // ✅ 注册
+    async function register() {
+        const username = document.getElementById("regUsername").value.trim();
+        const password = document.getElementById("regPassword").value;
+    
+        if (!username || !password) {
+            showMessage("regResult","请输入用户名和密码",false);
+            return;
+        }
+    
+        const res = await fetch(`${USER}/register`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({username,password})
+        });
+    
+        const data = await res.json();
+        if(res.status===201){
+            showMessage("regResult","注册成功！请登录",true);
+            showCard('loginCard');
+        } else {
+            showMessage("regResult",data.error||"注册失败",false);
+        }
+    }
+    
+    // ✅ 登录
+    async function login() {
+        const username = document.getElementById("loginUsername").value.trim();
+        const password = document.getElementById("loginPassword").value;
+    
+        if(!username || !password){
+            showMessage("loginResult","请输入用户名和密码",false);
+            return;
+        }
+    
+        const res = await fetch(`${USER}/login`,{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({username,password})
+        });
+    
+        const data = await res.json();
+    
+        if(res.status === 200){
+            showMessage("loginResult","登录成功！",true);
+    
+            // ✅ 保存 Token
+            localStorage.setItem("token", data.token);
+    
+            showCard("exchangeCard");
+        } else {
+            showMessage("loginResult", data.error || "登录失败", false);
+        }
+    }
+    
+    // ✅ 退出
+    function logout() {
+        localStorage.removeItem("token");
         showCard('loginCard');
-    }else{
-        showMessage("regResult",data.error||"注册失败",false);
     }
-}
-
-// 登录
-async function login() {
-    const username=document.getElementById("loginUsername").value.trim();
-    const password=document.getElementById("loginPassword").value;
-    if(!username||!password){ showMessage("loginResult","请输入用户名和密码",false); return; }
-
-    const res = await fetch(`${USER}/login`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({username,password})
-    });
-    const data = await res.json();
-    if(res.status===200){
-        showMessage("loginResult","登录成功！",true);
-        showCard('exchangeCard');
-        localStorage.setItem('username', username); // 保存登录状态
-    }else{
-        showMessage("loginResult",data.error||"登录失败",false);
+    
+    // ✅ 汇率转换（带 Token 验证）
+    async function convert() {
+        const from = document.getElementById("fromCurrency").value.trim().toUpperCase();
+        const to = document.getElementById("toCurrency").value.trim().toUpperCase();
+        const amount = parseFloat(document.getElementById("amount").value);
+    
+        if(!from || !to || isNaN(amount)){
+            document.getElementById("result").innerText="请输入完整信息"; 
+            return;
+        }
+    
+        const res = await authFetch(`${API}/exchangeRates?from=${from}&to=${to}`);
+    
+        if(res.status === 401){
+            alert("登录状态已过期，请重新登录");
+            logout();
+            return;
+        }
+    
+        const data = await res.json();
+        if(!data.rate){
+            document.getElementById("result").innerText="未找到汇率，请先添加";
+            return;
+        }
+    
+        const result = amount * data.rate;
+        document.getElementById("result").innerHTML =
+            `使用汇率：${data.from_currency} → ${data.to_currency} = ${data.rate}<br>
+             ${amount} ${data.from_currency} ≈ ${result.toFixed(2)} ${data.to_currency}`;
     }
-}
-
-// 退出
-function logout() {
-    localStorage.removeItem('username');
-    showCard('loginCard');
-}
-
-// 汇率转换
-async function convert() {
-    const from = document.getElementById("fromCurrency").value.trim().toUpperCase();
-    const to = document.getElementById("toCurrency").value.trim().toUpperCase();
-    const amount = parseFloat(document.getElementById("amount").value);
-    if (!from || !to || isNaN(amount)) { document.getElementById("result").innerText="请输入完整信息"; return; }
-
-    const res = await fetch(`${API}/exchangeRates?from=${from}&to=${to}`);
-    const data = await res.json();
-    if (!data.rate) { document.getElementById("result").innerText="未找到汇率，请先添加"; return; }
-
-    const result = amount * data.rate;
-    document.getElementById("result").innerHTML =
-        `使用汇率：${data.from_currency} → ${data.to_currency} = ${data.rate}<br>
-         ${amount} ${data.from_currency} ≈ ${result.toFixed(2)} ${data.to_currency}`;
-}
-
-// 页面加载时检查是否已登录
-window.onload = function(){
-    if(localStorage.getItem('username')){
-        showCard('exchangeCard');
-    } else {
-        showCard('loginCard');
-    }
-};
-</script>
+    
+    // ✅ 页面加载时检查是否已登录
+    window.onload = function(){
+        if(localStorage.getItem("token")){
+            showCard("exchangeCard");
+        } else {
+            showCard("loginCard");
+        }
+    };
+    </script>
+    
 
 </body>
 </html>

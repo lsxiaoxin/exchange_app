@@ -2,9 +2,11 @@ package rounter
 
 import (
 	"exchange_app/controllers"
+	"exchange_app/middleware"
 
 	"github.com/gin-gonic/gin"
 )
+
 
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
@@ -21,6 +23,7 @@ func SetupRouter() *gin.Engine {
 	})
 
 	api := r.Group("api")
+	api.Use(middleware.JWTAuth())
 	{
 		api.GET("/exchangeRates", controllers.GetExchangeRates)
 		api.POST("/exchangeRate", controllers.CreateExchangeRate)
