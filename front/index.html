@@ -2,83 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>汇率转换平台</title>
+<title>汇率转换与文章管理平台</title>
 <style>
-    body {
-        font-family: 'Segoe UI', sans-serif;
-        background:#f0f4f8;
-        margin:0;
-        padding:0;
-    }
-    header {
-        background:#4CAF50;
-        color:white;
-        padding:15px 30px;
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        box-shadow:0 2px 6px rgba(0,0,0,0.2);
-    }
-    header h1 {
-        margin:0;
-        font-size:22px;
-    }
-    nav {
-        display:flex;
-        gap:12px;
-    }
-    nav button {
-        background:#fff;
-        color:#4CAF50;
-        border:none;
-        padding:8px 16px;
-        border-radius:6px;
-        cursor:pointer;
-        font-weight:bold;
-        transition:0.2s;
-    }
-    nav button:hover {
-        background:#e0e0e0;
-    }
-    .container {
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        height:calc(100vh - 60px);
-    }
-    .card {
-        background:white;
-        padding:30px;
-        border-radius:12px;
-        box-shadow:0 6px 15px rgba(0,0,0,0.1);
-        width:360px;
-        text-align:center;
-        display:none;
-    }
-    input, button {
-        width:100%;
-        padding:10px;
-        margin:10px 0;
-        border-radius:6px;
-        border:1px solid #ccc;
-        font-size:14px;
-    }
+    body { font-family: 'Segoe UI', sans-serif; background:#f0f4f8; margin:0; padding:0; }
+    header { background:#4CAF50; color:white; padding:15px 30px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.2);}
+    header h1 { margin:0; font-size:22px; }
+    nav { display:flex; gap:12px; }
+    nav button { background:#fff; color:#4CAF50; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold; transition:0.2s; }
+    nav button:hover { background:#e0e0e0; }
+    .container { display:flex; justify-content:center; align-items:center; height:calc(100vh - 60px); }
+    .card { background:white; padding:30px; border-radius:12px; box-shadow:0 6px 15px rgba(0,0,0,0.1); width:360px; text-align:center; display:none; }
+    input, textarea, button { width:100%; padding:10px; margin:10px 0; border-radius:6px; border:1px solid #ccc; font-size:14px; }
     button { background:#4CAF50; color:white; border:none; cursor:pointer; }
     button:hover { background:#45a049; }
     .message { margin-top:10px; font-weight:bold; }
     .success { color:green; }
     .error { color:red; }
-    .result { margin-top:15px; font-weight:bold; color:#222; }
+    .result { margin-top:15px; font-weight:bold; color:#222; text-align:left; }
 </style>
 </head>
 <body>
 
 <header>
-    <h1>汇率转换平台</h1>
+    <h1>汇率与文章管理平台</h1>
     <nav>
         <button onclick="showCard('loginCard')">登录</button>
         <button onclick="showCard('registerCard')">注册</button>
         <button onclick="showCard('exchangeCard')">汇率转换</button>
+        <button onclick="showArticleCard()">文章管理</button>
         <button onclick="logout()">退出</button>
     </nav>
 </header>
@@ -111,139 +62,160 @@
         <button onclick="convert()">转换</button>
         <div id="result" class="result"></div>
     </div>
+
+    <!-- 文章管理 -->
+    <div id="articleCard" class="card">
+        <h2>文章管理</h2>
+        <input id="articleTitle" placeholder="标题">
+        <textarea id="articleContent" placeholder="内容" style="height:80px;"></textarea>
+        <button onclick="createArticle()">发布文章</button>
+        <div id="articleResult" class="message"></div>
+
+        <h3>文章列表</h3>
+        <div id="articleList" class="result"></div>
+    </div>
 </div>
 
 <script>
-    const API = "http://localhost:8080/api";
-    const USER = "http://localhost:8080/user";
-    
-    // ✅ 显示指定卡片
-    function showCard(cardId) {
-        const cards = ['loginCard','registerCard','exchangeCard'];
-        cards.forEach(id => {
-            document.getElementById(id).style.display = (id === cardId) ? 'block' : 'none';
-        });
-    }
-    
-    // ✅ 显示信息
-    function showMessage(id,msg,success){
-        const el=document.getElementById(id);
-        el.innerText=msg;
-        el.className='message '+(success?'success':'error');
-    }
-    
-    // ✅ 封装带 Token 的请求
-    async function authFetch(url, options = {}) {
-        const token = localStorage.getItem("token");
-        options.headers = {
-            ...options.headers,
-            "Authorization": "Bearer " + token  // ✅ 关键
-        };
-        return fetch(url, options);
-    }
-    
-    // ✅ 注册
-    async function register() {
-        const username = document.getElementById("regUsername").value.trim();
-        const password = document.getElementById("regPassword").value;
-    
-        if (!username || !password) {
-            showMessage("regResult","请输入用户名和密码",false);
-            return;
-        }
-    
-        const res = await fetch(`${USER}/register`, {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({username,password})
-        });
-    
-        const data = await res.json();
-        if(res.status===201){
-            showMessage("regResult","注册成功！请登录",true);
-            showCard('loginCard');
-        } else {
-            showMessage("regResult",data.error||"注册失败",false);
-        }
-    }
-    
-    // ✅ 登录
-    async function login() {
-        const username = document.getElementById("loginUsername").value.trim();
-        const password = document.getElementById("loginPassword").value;
-    
-        if(!username || !password){
-            showMessage("loginResult","请输入用户名和密码",false);
-            return;
-        }
-    
-        const res = await fetch(`${USER}/login`,{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({username,password})
-        });
-    
-        const data = await res.json();
-    
-        if(res.status === 200){
-            showMessage("loginResult","登录成功！",true);
-    
-            // ✅ 保存 Token
-            localStorage.setItem("token", data.token);
-    
-            showCard("exchangeCard");
-        } else {
-            showMessage("loginResult", data.error || "登录失败", false);
-        }
-    }
-    
-    // ✅ 退出
-    function logout() {
-        localStorage.removeItem("token");
-        showCard('loginCard');
-    }
-    
-    // ✅ 汇率转换（带 Token 验证）
-    async function convert() {
-        const from = document.getElementById("fromCurrency").value.trim().toUpperCase();
-        const to = document.getElementById("toCurrency").value.trim().toUpperCase();
-        const amount = parseFloat(document.getElementById("amount").value);
-    
-        if(!from || !to || isNaN(amount)){
-            document.getElementById("result").innerText="请输入完整信息"; 
-            return;
-        }
-    
-        const res = await authFetch(`${API}/exchangeRates?from=${from}&to=${to}`);
-    
-        if(res.status === 401){
-            alert("登录状态已过期，请重新登录");
-            logout();
-            return;
-        }
-    
-        const data = await res.json();
-        if(!data.rate){
-            document.getElementById("result").innerText="未找到汇率，请先添加";
-            return;
-        }
-    
-        const result = amount * data.rate;
-        document.getElementById("result").innerHTML =
-            `使用汇率：${data.from_currency} → ${data.to_currency} = ${data.rate}<br>
-             ${amount} ${data.from_currency} ≈ ${result.toFixed(2)} ${data.to_currency}`;
-    }
-    
-    // ✅ 页面加载时检查是否已登录
-    window.onload = function(){
-        if(localStorage.getItem("token")){
-            showCard("exchangeCard");
-        } else {
-            showCard("loginCard");
-        }
-    };
-    </script>
-    
+const API = "http://localhost:8080/api";
+const USER = "http://localhost:8080/user";
+const ARTICLE = "http://localhost:8080/article";
 
+// 显示指定卡片
+function showCard(cardId){
+    const cards = ['loginCard','registerCard','exchangeCard','articleCard'];
+    cards.forEach(id => { document.getElementById(id).style.display = (id===cardId)?'block':'none'; });
+}
+
+// 显示信息
+function showMessage(id,msg,success){
+    const el = document.getElementById(id);
+    el.innerText = msg;
+    el.className = 'message ' + (success?'success':'error');
+}
+
+// 封装带 Token 的请求
+async function authFetch(url, options={}){
+    const token = localStorage.getItem("token");
+    options.headers = {...options.headers,"Authorization":"Bearer "+token};
+    return fetch(url, options);
+}
+
+// 注册
+async function register(){
+    const username = document.getElementById("regUsername").value.trim();
+    const password = document.getElementById("regPassword").value;
+    if(!username || !password){ showMessage("regResult","请输入用户名和密码",false); return; }
+
+    const res = await fetch(`${USER}/register`,{
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password})
+    });
+    const data = await res.json();
+    if(res.status===201){ showMessage("regResult","注册成功！请登录",true); showCard('loginCard'); }
+    else { showMessage("regResult",data.error||"注册失败",false); }
+}
+
+// 登录
+async function login(){
+    const username = document.getElementById("loginUsername").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    if(!username||!password){ showMessage("loginResult","请输入用户名和密码",false); return; }
+
+    const res = await fetch(`${USER}/login`,{
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password})
+    });
+    const data = await res.json();
+    if(res.status===200){
+        showMessage("loginResult","登录成功！",true);
+        localStorage.setItem("token",data.token);
+        showCard("exchangeCard");
+    }else{ showMessage("loginResult",data.error||"登录失败",false); }
+}
+
+// 退出
+function logout(){ localStorage.removeItem("token"); showCard('loginCard'); }
+
+// 汇率转换
+async function convert(){
+    const from = document.getElementById("fromCurrency").value.trim().toUpperCase();
+    const to = document.getElementById("toCurrency").value.trim().toUpperCase();
+    const amount = parseFloat(document.getElementById("amount").value);
+    if(!from||!to||isNaN(amount)){ document.getElementById("result").innerText="请输入完整信息"; return; }
+
+    const res = await authFetch(`${API}/exchangeRates?from=${from}&to=${to}`);
+    if(res.status===401){ alert("登录状态已过期，请重新登录"); logout(); return; }
+
+    const data = await res.json();
+    if(!data.rate){ document.getElementById("result").innerText="未找到汇率，请先添加"; return; }
+
+    document.getElementById("result").innerHTML =
+        `使用汇率：${data.from_currency} → ${data.to_currency} = ${data.rate}<br>
+         ${amount} ${data.from_currency} ≈ ${(amount*data.rate).toFixed(2)} ${data.to_currency}`;
+}
+
+// 显示文章管理
+function showArticleCard(){ showCard("articleCard"); getArticles(); }
+
+// 创建文章
+async function createArticle(){
+    const title=document.getElementById("articleTitle").value.trim();
+    const content=document.getElementById("articleContent").value.trim();
+    if(!title||!content){ showMessage("articleResult","请输入标题和内容",false); return; }
+
+    const res = await authFetch(`${ARTICLE}/create`,{
+        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({title,content})
+    });
+    const data = await res.json();
+    if(res.status===201){
+        showMessage("articleResult","发布成功",true);
+        document.getElementById("articleTitle").value="";
+        document.getElementById("articleContent").value="";
+        getArticles();
+    }else{ showMessage("articleResult",data.error||"发布失败",false); }
+}
+
+// 获取文章列表
+async function getArticles(){
+    const res = await authFetch(`${ARTICLE}/get`);
+    const data = await res.json();
+    const listEl = document.getElementById("articleList");
+    listEl.innerHTML="";
+    if(data.articles && data.articles.length){
+        data.articles.forEach(a => {
+
+        console.log("文章ID:", a.id);
+
+        const div = document.createElement("div");
+        div.style.border = "1px solid #ccc";
+        div.style.padding = "8px";
+        div.style.margin = "5px 0";
+
+        div.innerHTML = `<b>${a.title}</b> (作者ID: ${a.user_id})<br>${a.content}<br>`;
+
+        const btn = document.createElement("button");
+        btn.innerText = "删除";
+        btn.onclick = () => deleteArticle(a.id); 
+
+        div.appendChild(btn);
+        listEl.appendChild(div);
+    });
+    }else{ listEl.innerText="暂无文章"; }
+}
+
+// 删除文章
+async function deleteArticle(id){
+    if(!confirm("确定删除该文章吗？")) return;
+    const res = await authFetch(`${ARTICLE}/delete/${encodeURIComponent(id)}`,{method:"DELETE"});
+    const data = await res.json();
+    if(res.status===200){ alert("删除成功"); getArticles(); }
+    else{ alert(data.error||"删除失败"); }
+}
+
+// 页面加载
+window.onload = function(){
+    if(localStorage.getItem("token")) showCard("exchangeCard");
+    else showCard("loginCard");
+};
+</script>
 </body>
 </html>
