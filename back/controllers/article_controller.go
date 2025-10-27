@@ -58,6 +58,7 @@ func GetArtiles(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"articles": articles,
 	})
+
 }
 
 func DeleteArtile(ctx *gin.Context) {

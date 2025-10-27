@@ -7,6 +7,7 @@ import (
 
 func main() {
 	config.InitDB()
+	config.InitRedis()
 	r := rounter.SetupRouter()
 	r.Run()
 }
