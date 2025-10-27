@@ -174,48 +174,119 @@ async function createArticle(){
     }else{ showMessage("articleResult",data.error||"发布失败",false); }
 }
 
-// 获取文章列表
 async function getArticles(){
     const res = await authFetch(`${ARTICLE}/get`);
     const data = await res.json();
     const listEl = document.getElementById("articleList");
-    listEl.innerHTML="";
-    if(data.articles && data.articles.length){
-        data.articles.forEach(a => {
+    listEl.innerHTML = "";
 
-        console.log("文章ID:", a.id);
+    if (!data.articles || !data.articles.length) {
+        listEl.innerText = "暂无文章";
+        return;
+    }
+
+    for (const a of data.articles) {
+        // 支持后端返回 ID 或 id 两种写法
+        const articleId = (a.id !== undefined) ? a.id : a.ID;
+        console.log("文章ID:", articleId, "title:", a.title);
 
         const div = document.createElement("div");
         div.style.border = "1px solid #ccc";
         div.style.padding = "8px";
         div.style.margin = "5px 0";
 
-        div.innerHTML = `<b>${a.title}</b> (作者ID: ${a.user_id})<br>${a.content}<br>`;
+        // 安全渲染：title/content 用 textContent 防 XSS（用 innerHTML 仅在你信任内容时）
+        const titleEl = document.createElement("div");
+        titleEl.innerHTML = `<b>${escapeHtml(a.title)}</b> (作者ID: ${a.user_id})`;
 
-        const btn = document.createElement("button");
-        btn.innerText = "删除";
-        btn.onclick = () => deleteArticle(a.id); 
+        const contentEl = document.createElement("div");
+        contentEl.textContent = a.content;
 
-        div.appendChild(btn);
+        // 点赞计数占位
+        const likeCountSpan = document.createElement("span");
+        likeCountSpan.id = `like-count-${articleId}`;
+        likeCountSpan.textContent = "加载中...";
+
+        // 点赞按钮
+        const likeBtn = document.createElement("button");
+        likeBtn.innerText = "点赞";
+        likeBtn.style.marginTop = "6px";
+        likeBtn.onclick = () => likeArticle(articleId, likeBtn);
+
+        // 删除按钮（显示所有，后端会判断权限；你可以在此处隐藏非作者）
+        const delBtn = document.createElement("button");
+        delBtn.innerText = "删除";
+        delBtn.style.marginLeft = "8px";
+        delBtn.onclick = () => deleteArticle(articleId);
+
+        // 组装
+        div.appendChild(titleEl);
+        div.appendChild(contentEl);
+        const meta = document.createElement("div");
+        meta.style.marginTop = "8px";
+        meta.appendChild(document.createTextNode("👍 "));
+        meta.appendChild(likeCountSpan);
+        meta.appendChild(document.createTextNode(" 人点赞"));
+        meta.appendChild(document.createElement("br"));
+        meta.appendChild(likeBtn);
+        meta.appendChild(delBtn);
+
+        div.appendChild(meta);
         listEl.appendChild(div);
+
+        // 加载点赞数并更新按钮文本
+        updateLikeCount(articleId, likeBtn);
+    }
+}
+
+const SERVER = "http://localhost:8080";
+
+// 点赞 / 取消
+async function likeArticle(articleId, btn){
+    const res = await authFetch(`${SERVER}/like/toggle/${articleId}`, {
+        method: "POST"
     });
-    }else{ listEl.innerText="暂无文章"; }
-}
-
-// 删除文章
-async function deleteArticle(id){
-    if(!confirm("确定删除该文章吗？")) return;
-    const res = await authFetch(`${ARTICLE}/delete/${encodeURIComponent(id)}`,{method:"DELETE"});
     const data = await res.json();
-    if(res.status===200){ alert("删除成功"); getArticles(); }
-    else{ alert(data.error||"删除失败"); }
+    updateLikeCount(articleId, btn);
 }
 
-// 页面加载
-window.onload = function(){
-    if(localStorage.getItem("token")) showCard("exchangeCard");
-    else showCard("loginCard");
-};
+// 获取点赞数量
+async function updateLikeCount(articleId, btn){
+    const res = await authFetch(`${SERVER}/like/get/${articleId}`);
+    const data = await res.json();
+    const count = data.like_count || 0;
+
+    const countSpan = document.getElementById(`like-count-${articleId}`);
+    if(countSpan) countSpan.textContent = count;
+
+    if(btn) btn.innerText = `👍 点赞(${count})`;
+}
+
+// 删除文章（后端会校验 userID）
+async function deleteArticle(id){
+    if(!id) return alert("文章ID无效");
+    if(!confirm("确定删除该文章吗？")) return;
+
+    const res = await authFetch(`${ARTICLE}/delete/${encodeURIComponent(id)}`, { method: "DELETE" });
+    const data = await res.json();
+    if (res.status === 200) {
+        alert("删除成功");
+        getArticles();
+    } else {
+        alert(data.error || data.message || "删除失败");
+    }
+}
+
+// 简单的文本转义（防 XSS）
+function escapeHtml(str){
+    if(!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 </script>
 </body>
 </html>
