@@ -40,6 +40,7 @@ func SetupRouter() *gin.Engine {
 	{
 		article.POST("/create", controllers.CreateArticle)
 		article.GET("/get", controllers.GetArtiles)
+		article.DELETE("/delete/:id", controllers.DeleteArtile)
 	}
 
 	return r;
